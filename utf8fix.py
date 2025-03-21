@@ -13,23 +13,8 @@ def clean_filename(filename, mode='preserve'):
 def process_directory(directory, mode='preserve', dry_run=False):
     logger = logging.getLogger(__name__)
     
-    for root, dirs, files in os.walk(directory):
-        # Process files
-        for name in files:
-            try:
-                new_name = clean_filename(name, mode)
-                if name != new_name:
-                    old_path = os.path.join(root, name)
-                    new_path = os.path.join(root, new_name)
-                    if dry_run:
-                        logger.info(f"Would rename file: {old_path} -> {new_path}")
-                    else:
-                        os.rename(old_path, new_path)
-                        logger.info(f"Renamed file: {old_path} -> {new_path}")
-            except Exception as e:
-                logger.error(f"Error processing {name}: {e}")
-
-        # Process directories
+    # First pass: Process directories bottom-up
+    for root, dirs, _ in os.walk(directory, topdown=False):
         for name in dirs:
             try:
                 new_name = clean_filename(name, mode)
@@ -43,6 +28,22 @@ def process_directory(directory, mode='preserve', dry_run=False):
                         logger.info(f"Renamed directory: {old_path} -> {new_path}")
             except Exception as e:
                 logger.error(f"Error processing directory {name}: {e}")
+
+    # Second pass: Process files
+    for root, _, files in os.walk(directory):
+        for name in files:
+            try:
+                new_name = clean_filename(name, mode)
+                if name != new_name:
+                    old_path = os.path.join(root, name)
+                    new_path = os.path.join(root, new_name)
+                    if dry_run:
+                        logger.info(f"Would rename file: {old_path} -> {new_path}")
+                    else:
+                        os.rename(old_path, new_path)
+                        logger.info(f"Renamed file: {old_path} -> {new_path}")
+            except Exception as e:
+                logger.error(f"Error processing {name}: {e}")
 
 def main():
     parser = ArgumentParser(description='Fix character encoding in file and directory names')
